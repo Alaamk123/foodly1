@@ -1,17 +1,16 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "type": "commonjs",
-  "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^18.0.5",
-    "express": "^5.2.1",
-    "morgan": "^1.12.1"
-  }
+"name": "foodly1",
+"version": "1.0.0",
+"main": "server.js",
+"scripts": {
+"start": "node server.js",
+"seed": "node seed.js"
+},
+"dependencies": {
+"cors": "^2.8.5",
+"dotenv": "^17.0.0",
+"express": "^5.0.0",
+"mongoose": "^9.10.3",
+"morgan": "^1.10.0"
+}
 }
