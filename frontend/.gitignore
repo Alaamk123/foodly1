@@ -2,3 +2,5 @@ node_modules
  dist
 .env
 dist
+.DS_Store
+*.local
