@@ -2,9 +2,28 @@ const mongoose = require("mongoose");
 
 const GROCERY_CATEGORIES = ["Produce", "Dairy & Eggs", "Meat & Seafood", "Pantry", "Frozen", "Snacks", "Bakery", "Spices & Seasonings", "Other"];
 
-const DIET_TAGS = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Low-Carb", "Keto", "Paleo", "Other"];
+const DIET_TAGS = [
+  "Vegetarian",
+  "Vegan",
+  "Gluten-Free",
+  "Dairy-Free",
+  "Low-Carb",
+  "Keto",
+  "Paleo",
+  "Pescatarian",
+  "Other",
+];
 
-const ALLERGENS = ["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Gluten", "soy", "Fish",];
+const ALLERGENS = [
+  "Peanuts",
+  "Tree Nuts",
+  "Dairy",
+  "Eggs",
+  "Gluten",
+  "Soy",
+  "Fish",
+  "Shellfish",
+];
 
 const IngredientSchema = new mongoose.Schema({
   name: {
@@ -40,8 +59,8 @@ const RecipeSchema = new mongoose.Schema({
   title: {type: String, required: true, trim: true, index: true},
   image: {type: String, required: true},
   description: {type: String, default: ""},
-  preparationTime: {type: Number, required: true, min: 0},
-  cookingTime: {type: Number, required: true, min: 0},
+  prepTimeMinutes: { type: Number, required: true, min: 0 },
+  cookTimeMinutes: { type: Number, required: true, min: 0 },
   servings: {type: Number, required: true, min: 1, default: 2},
   calories: {type: Number, required: true, min: 0},
   difficulty: {type: String, enum: ["Easy", "Medium", "Advanced"], default: "Easy"},

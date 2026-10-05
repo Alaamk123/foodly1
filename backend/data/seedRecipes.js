@@ -3,6 +3,52 @@ const mongoose = require("mongoose");
 const connectDB = require("../config/db");
 const Recipe = require("../models/Recipe");
 
+const img = (id) => `https://images.unsplash.com/photo-${id}?w=800`;
+
+const normalizeCategory = (category) => {
+  if (category === "Spices & Condiments") {
+    return "Spices & Seasonings";
+  }
+
+  return category;
+};
+
+const normalizeDietTags = (tags = []) =>
+  tags.map((tag) => {
+    if (tag === "Gluten Free") return "Gluten-Free";
+    if (tag === "Dairy Free") return "Dairy-Free";
+    if (tag === "Low Carb") return "Low-Carb";
+    return tag;
+  });
+
+const normalizeAllergens = (allergens = []) =>
+  allergens.map((allergen) =>
+    allergen.toLowerCase() === "soy" ? "Soy" : allergen
+  );
+
+const i = (name, quantity, unit, category, allergens = []) => ({
+  name,
+  quantity: String(quantity),
+  unit,
+  category: normalizeCategory(category),
+  ...(allergens.length
+    ? { allergens: normalizeAllergens(allergens) }
+    : {}),
+});
+
+const normalizeRecipe = (recipe) => ({
+  ...recipe,
+  dietTags: normalizeDietTags(recipe.dietTags),
+  allergens: normalizeAllergens(recipe.allergens),
+  ingredients: recipe.ingredients.map((ingredient) => ({
+    ...ingredient,
+    quantity: String(ingredient.quantity),
+    category: normalizeCategory(ingredient.category),
+    ...(ingredient.allergens
+      ? { allergens: normalizeAllergens(ingredient.allergens) }
+      : {}),
+  })),
+});
 
 const recipes = [
   {
@@ -808,7 +854,7 @@ async function seed() {
     await Recipe.deleteMany({});
   }
 
-  const all = [...recipes, ...moreRecipes];
+  const all = recipes.map(normalizeRecipe);
   await Recipe.insertMany(all);
   console.log(`[seed] Inserted ${all.length} recipes successfully.`);
 
