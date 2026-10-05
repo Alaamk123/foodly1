@@ -10,6 +10,7 @@ import RecipeDetail from "./pages/RecipeDetail";
 import WeeklyPlanner from "./pages/WeeklyPlanner";
 import GroceryList from "./pages/GroceryList";
 import { useAuth } from "./context/AuthContext";
+import Checkout from "./pages/Checkout";
 
 export default function App() {
   const { authLoading, user } = useAuth();
@@ -48,6 +49,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+          path="/checkout"
+          element={
+             <ProtectedRoute>
+             <Checkout />
+             </ProtectedRoute>
+           }
+         />
           <Route path="*" element={<Navigate to="/recipes" replace />} />
         </Routes>
       </main>

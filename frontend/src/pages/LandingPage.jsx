@@ -15,6 +15,7 @@ import StatCounter from "../components/StatCounter";
 import TestimonialCarousel from "../components/TestimonialCarousel";
 import FaqAccordion from "../components/FaqAccordion";
 import AppStoreBadges from "../components/AppStoreBadges";
+import CookingVideoSection from "../components/CookingVideoSection";
 
 const STEPS = [
   {
@@ -119,7 +120,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
+      <CookingVideoSection />
+      
       {/* ---------------- Features ---------------- */}
       <section className="bg-white px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-6xl">

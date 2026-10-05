@@ -13,6 +13,7 @@ import {
   Snowflake,
   Sparkles,
   ShoppingBasket,
+  ShoppingCart,
 } from "lucide-react";
 import { fetchGroceryList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -83,6 +84,9 @@ export default function GroceryList() {
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="section-title">Grocery List</h1>
+          <Link to="/checkout" className="btn-accent mt-4 inline-flex">
+          <ShoppingCart size={18} /> Checkout
+          </Link>
           <p className="text-sm text-primary-500">
             Automatically built from everything planned this week, grouped by aisle.
           </p>
