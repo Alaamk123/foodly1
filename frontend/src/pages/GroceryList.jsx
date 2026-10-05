@@ -19,6 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { shiftWeek, formatWeekRangeLabel } from "../utils/date";
 import LoadingSpinner from "../components/LoadingSpinner";
 
+
 const CATEGORY_ICONS = {
   Produce: Carrot,
   "Meat & Seafood": Beef,

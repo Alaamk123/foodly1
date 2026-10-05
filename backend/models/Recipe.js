@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
-const GROCERY_CATEGORY = ["Produce", "Dairy & Eggs", "Meat & Seafood", "Pantry", "Frozen", "Snacks", "Bakery", "Spices & Seasonings", "Other"];
+const GROCERY_CATEGORIES = ["Produce", "Dairy & Eggs", "Meat & Seafood", "Pantry", "Frozen", "Snacks", "Bakery", "Spices & Seasonings", "Other"];
 
-const DIET_TAGES = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Low-Carb", "Keto", "Paleo", "Other"];
+const DIET_TAGS = ["Vegetarian", "Vegan", "Gluten-Free", "Dairy-Free", "Low-Carb", "Keto", "Paleo", "Other"];
 
 const ALLERGENS = ["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Gluten", "soy", "Fish",];
 
@@ -24,7 +24,7 @@ const IngredientSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: GROCERY_CATEGORY,
+    enum: GROCERY_CATEGORIES,
     required: true,
     default: "Other",  
   },
@@ -37,7 +37,7 @@ const IngredientSchema = new mongoose.Schema({
 );
 
 const RecipeSchema = new mongoose.Schema({
-  title: {type: String, required: true, trim: true, inde},
+  title: {type: String, required: true, trim: true, index: true},
   image: {type: String, required: true},
   description: {type: String, default: ""},
   preparationTime: {type: Number, required: true, min: 0},
@@ -45,7 +45,7 @@ const RecipeSchema = new mongoose.Schema({
   servings: {type: Number, required: true, min: 1, default: 2},
   calories: {type: Number, required: true, min: 0},
   difficulty: {type: String, enum: ["Easy", "Medium", "Advanced"], default: "Easy"},
-  dietTags: [{type: String, enum: DIET_TAGES}],
+  dietTags: [{type: String, enum: DIET_TAGS}],
   allergens: [{type: String, enum: ALLERGENS}],
   ingredients: {type: [IngredientSchema],
      validate: (v) => Array.isArray(v) && v.length > 0,
