@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ChefHat, LogIn, UserPlus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../i18n/LanguageContext";
 
 /** One page used for both /login and /signup (mode = "login" | "signup"). */
 export default function AuthPage({ mode }) {
   const isSignup = mode === "signup";
   const { login, register } = useAuth();
+  const { t, apiError } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,7 +27,7 @@ export default function AuthPage({ mode }) {
       else await login(form.email, form.password);
       navigate(location.state?.from || "/planner", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong. Is the server running?");
+      setError(apiError(err));
     } finally {
       setLoading(false);
     }
@@ -40,25 +42,25 @@ export default function AuthPage({ mode }) {
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-500 text-white shadow-card">
           <ChefHat size={24} />
         </span>
-        <h1 className="section-title">{isSignup ? "Create your account" : "Welcome back"}</h1>
+        <h1 className="section-title">{isSignup ? t("auth.createTitle") : t("auth.welcomeTitle")}</h1>
         <p className="text-sm text-primary-500">
-          {isSignup ? "Sign up to plan your week and build your grocery list." : "Log in to see your meal plan."}
+          {isSignup ? t("auth.signupSub") : t("auth.loginSub")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="card flex flex-col gap-4 p-6">
         {isSignup && (
           <div>
-            <label className="mb-1 block text-sm font-semibold text-primary-700">Name</label>
+            <label className="mb-1 block text-sm font-semibold text-primary-700">{t("auth.name")}</label>
             <input className={inputClass} value={form.name} onChange={update("name")} required />
           </div>
         )}
         <div>
-          <label className="mb-1 block text-sm font-semibold text-primary-700">Email</label>
+          <label className="mb-1 block text-sm font-semibold text-primary-700">{t("auth.email")}</label>
           <input type="email" className={inputClass} value={form.email} onChange={update("email")} required />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-semibold text-primary-700">Password</label>
+          <label className="mb-1 block text-sm font-semibold text-primary-700">{t("auth.password")}</label>
           <input
             type="password"
             className={inputClass}
@@ -67,21 +69,21 @@ export default function AuthPage({ mode }) {
             minLength={6}
             required
           />
-          {isSignup && <p className="mt-1 text-xs text-primary-400">At least 6 characters.</p>}
+          {isSignup && <p className="mt-1 text-xs text-primary-400">{t("auth.min6")}</p>}
         </div>
 
         {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
 
         <button type="submit" disabled={loading} className="btn-primary">
           {isSignup ? <UserPlus size={18} /> : <LogIn size={18} />}
-          {loading ? "Please wait..." : isSignup ? "Sign up" : "Log in"}
+          {loading ? t("auth.wait") : isSignup ? t("auth.signup") : t("auth.login")}
         </button>
       </form>
 
       <p className="mt-4 text-center text-sm text-primary-500">
-        {isSignup ? "Already have an account?" : "New here?"}{" "}
+        {isSignup ? t("auth.haveAccount") : t("auth.newHere")}{" "}
         <Link to={isSignup ? "/login" : "/signup"} className="font-semibold text-primary-600 hover:underline">
-          {isSignup ? "Log in" : "Create an account"}
+          {isSignup ? t("auth.login") : t("auth.createAccountLink")}
         </Link>
       </p>
     </div>

@@ -11,6 +11,7 @@ import {
   Croissant,
   Package,
   Snowflake,
+  Cookie,
   Sparkles,
   ShoppingBasket,
   ShoppingCart,
@@ -19,6 +20,7 @@ import { fetchGroceryList } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { shiftWeek, formatWeekRangeLabel } from "../utils/date";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useLanguage } from "../i18n/LanguageContext";
 
 
 const CATEGORY_ICONS = {
@@ -29,6 +31,8 @@ const CATEGORY_ICONS = {
   Pantry: Package,
   Frozen: Snowflake,
   "Spices & Condiments": Sparkles,
+  "Spices & Seasonings": Sparkles, // the name stored in the database
+  Snacks: Cookie,
   Other: ShoppingBasket,
 };
 
@@ -38,6 +42,7 @@ function storageKey(userId, weekStart) {
 
 export default function GroceryList() {
   const { user, currentWeekStart, setCurrentWeekStart } = useAuth();
+  const { t, term, ingredient, locale, isRTL } = useLanguage();
   const userId = user.id; // only used to keep each user's check-marks separate in localStorage
   const [list, setList] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -83,12 +88,12 @@ export default function GroceryList() {
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="section-title">Grocery List</h1>
+          <h1 className="section-title">{t("grocery.title")}</h1>
           <Link to="/checkout" className="btn-accent mt-4 inline-flex">
-          <ShoppingCart size={18} /> Checkout
+          <ShoppingCart size={18} /> {t("grocery.checkout")}
           </Link>
           <p className="text-sm text-primary-500">
-            Automatically built from everything planned this week, grouped by aisle.
+            {t("grocery.sub")}
           </p>
         </div>
 
@@ -96,31 +101,33 @@ export default function GroceryList() {
           <button
             onClick={() => setCurrentWeekStart(shiftWeek(currentWeekStart, -1))}
             className="rounded-full p-2 text-primary-500 hover:bg-primary-50"
+            aria-label={t("planner.prevWeek")}
           >
-            <ChevronLeft size={18} />
+            {isRTL ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
           <span className="px-2 text-sm font-semibold text-primary-700">
-            {formatWeekRangeLabel(currentWeekStart)}
+            {formatWeekRangeLabel(currentWeekStart, locale)}
           </span>
           <button
             onClick={() => setCurrentWeekStart(shiftWeek(currentWeekStart, 1))}
             className="rounded-full p-2 text-primary-500 hover:bg-primary-50"
+            aria-label={t("planner.nextWeek")}
           >
-            <ChevronRight size={18} />
+            {isRTL ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
           </button>
         </div>
       </div>
 
       {loading ? (
-        <LoadingSpinner label="Building your grocery list..." />
+        <LoadingSpinner label={t("grocery.loading")} />
       ) : !list || list.categories.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="font-display font-bold text-primary-800">No meals planned yet.</p>
+          <p className="font-display font-bold text-primary-800">{t("grocery.emptyTitle")}</p>
           <p className="mt-1 text-sm text-primary-500">
-            Add recipes to your weekly planner and they'll show up here automatically.
+            {t("grocery.emptyText")}
           </p>
           <Link to="/planner" className="btn-primary mt-5 inline-flex">
-            Go to Meal Planner
+            {t("grocery.goPlanner")}
           </Link>
         </div>
       ) : (
@@ -128,10 +135,10 @@ export default function GroceryList() {
           <div className="mb-6 card flex items-center justify-between px-5 py-4">
             <div>
               <p className="font-display font-bold text-primary-900">
-                {checkedCount} of {totalItems} items checked
+                {t("grocery.checked", { checked: checkedCount, total: totalItems })}
               </p>
               <p className="text-xs text-primary-400">
-                From {list.recipeCount} recipe{list.recipeCount !== 1 ? "s" : ""} planned this week
+                {t("grocery.fromRecipes", { n: list.recipeCount })}
               </p>
             </div>
             <div className="h-2 w-28 overflow-hidden rounded-full bg-primary-100">
@@ -149,8 +156,8 @@ export default function GroceryList() {
                 <div key={category} className="card overflow-hidden">
                   <div className="flex items-center gap-2 border-b border-primary-50 bg-primary-50/60 px-5 py-3">
                     <Icon size={18} className="text-primary-500" />
-                    <h2 className="font-display font-bold text-primary-800">{category}</h2>
-                    <span className="ml-auto text-xs font-semibold text-primary-400">{items.length} items</span>
+                    <h2 className="font-display font-bold text-primary-800">{term("categories", category)}</h2>
+                    <span className="ms-auto text-xs font-semibold text-primary-400">{t("grocery.itemsCount", { n: items.length })}</span>
                   </div>
                   <ul>
                     {items.map((item) => {
@@ -160,7 +167,7 @@ export default function GroceryList() {
                         <li key={key} className="border-b border-primary-50 last:border-b-0">
                           <button
                             onClick={() => toggleItem(key)}
-                            className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-primary-50/50"
+                            className="flex w-full items-center gap-3 px-5 py-3 text-start transition-colors hover:bg-primary-50/50"
                           >
                             {isChecked ? (
                               <CheckCircle2 size={20} className="flex-shrink-0 text-primary-500" />
@@ -168,10 +175,10 @@ export default function GroceryList() {
                               <Circle size={20} className="flex-shrink-0 text-primary-200" />
                             )}
                             <span className={`flex-1 text-sm ${isChecked ? "text-primary-300 line-through" : "text-primary-800"}`}>
-                              {item.name}
+                              {ingredient(item.name)}
                             </span>
                             <span className={`text-sm font-semibold ${isChecked ? "text-primary-300" : "text-primary-500"}`}>
-                              {item.quantity} {item.unit}
+                              {item.quantity} {term("units", item.unit)}
                             </span>
                           </button>
                         </li>

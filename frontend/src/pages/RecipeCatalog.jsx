@@ -3,13 +3,16 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { fetchRecipes } from "../api/client";
 import RecipeCard from "../components/RecipeCard";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useLanguage } from "../i18n/LanguageContext";
 
-const DIET_FILTERS = ["Keto", "Vegetarian", "Vegan", "Low Carb", "Paleo", "Gluten Free", "Dairy Free", "Pescatarian"];
+// These are the exact values stored in the database (Recipe.dietTags), so the filters actually match.
+const DIET_FILTERS = ["Keto", "Vegetarian", "Vegan", "Low-Carb", "Paleo", "Gluten-Free", "Dairy-Free", "Pescatarian"];
 const ALLERGEN_FILTERS = ["Peanuts", "Tree Nuts", "Dairy", "Eggs", "Gluten", "Soy", "Shellfish", "Fish"];
 
 const toggleInList = (list, value) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
 
 export default function RecipeCatalog() {
+  const { t, term } = useLanguage();
   const [recipes, setRecipes] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +36,7 @@ export default function RecipeCatalog() {
         setRecipes(res.data);
         setPagination(res.pagination);
       })
-      .catch(() => setError("Could not load recipes. Is the backend running?"))
+      .catch(() => setError("load"))
       .finally(() => setLoading(false));
   }, [search, activeDiets, avoidAllergens, page]);
 
@@ -43,9 +46,9 @@ export default function RecipeCatalog() {
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="section-title">Discover Recipes</h1>
+          <h1 className="section-title">{t("catalog.title")}</h1>
           <p className="text-sm text-primary-500">
-            {pagination ? `${pagination.total} recipes` : "Browse recipes"} — filter by diet or allergy.
+            {pagination ? t("catalog.count", { n: pagination.total }) : t("catalog.browse")}
           </p>
         </div>
 
@@ -58,14 +61,14 @@ export default function RecipeCatalog() {
                 setPage(1);
                 setSearch(e.target.value);
               }}
-              placeholder="Search recipes..."
+              placeholder={t("catalog.search")}
               className="w-40 bg-transparent text-sm outline-none placeholder:text-primary-300 sm:w-56"
             />
           </div>
           <button
             onClick={() => setShowFilters((s) => !s)}
             className={`btn-secondary !px-4 ${showFilters ? "!bg-primary-500 !text-white" : ""}`}
-            aria-label="Filters"
+            aria-label={t("catalog.filters")}
           >
             <SlidersHorizontal size={16} />
           </button>
@@ -75,7 +78,7 @@ export default function RecipeCatalog() {
       {showFilters && (
         <div className="mb-6 flex flex-col gap-4 rounded-xl2 bg-white p-4 shadow-card ring-1 ring-black/5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-bold uppercase tracking-wide text-primary-400">Diet:</span>
+            <span className="me-1 text-xs font-bold uppercase tracking-wide text-primary-400">{t("catalog.diet")}</span>
             {DIET_FILTERS.map((diet) => (
               <button
                 key={diet}
@@ -89,13 +92,13 @@ export default function RecipeCatalog() {
                     : "border-primary-100 text-primary-600 hover:border-primary-300"
                 }`}
               >
-                {diet}
+                {term("diets", diet)}
               </button>
             ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-xs font-bold uppercase tracking-wide text-primary-400">Without:</span>
+            <span className="me-1 text-xs font-bold uppercase tracking-wide text-primary-400">{t("catalog.without")}</span>
             {ALLERGEN_FILTERS.map((a) => (
               <button
                 key={a}
@@ -109,7 +112,7 @@ export default function RecipeCatalog() {
                     : "border-primary-100 text-primary-600 hover:border-primary-300"
                 }`}
               >
-                {a}
+                {term("allergens", a)}
               </button>
             ))}
           </div>
@@ -123,22 +126,22 @@ export default function RecipeCatalog() {
               }}
               className="flex items-center gap-1 self-start text-xs font-semibold text-accent-600 hover:underline"
             >
-              <X size={12} /> Clear all filters
+              <X size={12} /> {t("catalog.clearFilters")}
             </button>
           )}
         </div>
       )}
 
       {loading ? (
-        <LoadingSpinner label="Cooking up recipes..." />
+        <LoadingSpinner label={t("catalog.loading")} />
       ) : error ? (
         <div className="rounded-xl2 bg-white p-10 text-center shadow-card">
-          <p className="font-display font-bold text-red-600">{error}</p>
+          <p className="font-display font-bold text-red-600">{t("catalog.error")}</p>
         </div>
       ) : recipes.length === 0 ? (
         <div className="rounded-xl2 bg-white p-10 text-center shadow-card">
-          <p className="font-display font-bold text-primary-800">No recipes match your filters.</p>
-          <p className="mt-1 text-sm text-primary-500">Try clearing a filter or searching a different term.</p>
+          <p className="font-display font-bold text-primary-800">{t("catalog.emptyTitle")}</p>
+          <p className="mt-1 text-sm text-primary-500">{t("catalog.emptyText")}</p>
         </div>
       ) : (
         <>
