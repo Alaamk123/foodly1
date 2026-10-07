@@ -1,4 +1,5 @@
 import { Flame, Carrot, Beef, Milk, CheckCircle2, Circle } from "lucide-react";
+import { useLanguage } from "../i18n/LanguageContext";
 
 /**
  * A hand-built, CSS-only phone frame with a miniature recreation of the
@@ -7,11 +8,13 @@ import { Flame, Carrot, Beef, Milk, CheckCircle2, Circle } from "lucide-react";
  * giving visitors a concrete sense of the product.
  */
 export default function PhoneMockup({ className = "" }) {
+  const { t, term, ingredient, locale } = useLanguage();
+  const qty = (n, unit) => `${n} ${term("units", unit)}`;
   const rows = [
-    { icon: Carrot, label: "Spinach", qty: "2 cup", done: true },
-    { icon: Carrot, label: "Avocado", qty: "3 unit", done: true },
-    { icon: Beef, label: "Chicken breast", qty: "4 unit", done: false },
-    { icon: Milk, label: "Greek yogurt", qty: "1 cup", done: false },
+    { icon: Carrot, label: ingredient("spinach"), qty: qty(2, "cup"), done: true },
+    { icon: Carrot, label: ingredient("avocado"), qty: qty(3, "unit"), done: true },
+    { icon: Beef, label: ingredient("chicken breast"), qty: qty(4, "unit"), done: false },
+    { icon: Milk, label: ingredient("greek yogurt"), qty: qty(1, "cup"), done: false },
   ];
 
   return (
@@ -24,9 +27,9 @@ export default function PhoneMockup({ className = "" }) {
           <div className="flex h-[520px] flex-col pt-7">
             {/* Mini status bar */}
             <div className="flex items-center justify-between px-5 pb-2">
-              <span className="font-display text-xs font-bold text-primary-900">Grocery List</span>
+              <span className="font-display text-xs font-bold text-primary-900">{t("phone.title")}</span>
               <span className="flex items-center gap-1 text-[10px] font-semibold text-primary-400">
-                <Flame size={11} /> 1,840 kcal
+                <Flame size={11} /> {t("common.kcal", { n: (1840).toLocaleString(locale) })}
               </span>
             </div>
 
@@ -39,7 +42,7 @@ export default function PhoneMockup({ className = "" }) {
             <div className="mx-3 mb-3 overflow-hidden rounded-2xl bg-white shadow-sm">
               <div className="flex items-center gap-1.5 border-b border-primary-50 bg-primary-50/70 px-3 py-2">
                 <Carrot size={13} className="text-primary-500" />
-                <span className="text-[11px] font-bold text-primary-800">Produce</span>
+                <span className="text-[11px] font-bold text-primary-800">{t("phone.produce")}</span>
               </div>
               {rows.slice(0, 2).map((r) => (
                 <Row key={r.label} {...r} />
@@ -49,7 +52,7 @@ export default function PhoneMockup({ className = "" }) {
             <div className="mx-3 overflow-hidden rounded-2xl bg-white shadow-sm">
               <div className="flex items-center gap-1.5 border-b border-primary-50 bg-primary-50/70 px-3 py-2">
                 <Beef size={13} className="text-primary-500" />
-                <span className="text-[11px] font-bold text-primary-800">Meat &amp; Dairy</span>
+                <span className="text-[11px] font-bold text-primary-800">{t("phone.meatDairy")}</span>
               </div>
               {rows.slice(2).map((r) => (
                 <Row key={r.label} {...r} />
@@ -73,8 +76,8 @@ export default function PhoneMockup({ className = "" }) {
       </div>
 
       {/* Floating badge */}
-      <div className="absolute -right-4 top-10 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-primary-700 shadow-card sm:-right-8">
-        <CheckCircle2 size={14} className="text-primary-500" /> Synced
+      <div className="absolute -end-4 top-10 flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-primary-700 shadow-card sm:-end-8">
+        <CheckCircle2 size={14} className="text-primary-500" /> {t("phone.synced")}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import {
   FaYoutube,
   FaGithub,
 } from "react-icons/fa";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const SOCIALS = [
   { name: "Facebook", icon: FaFacebook, href: "https://facebook.com" },
@@ -16,6 +17,7 @@ const SOCIALS = [
 ];
 
 export default function Footer() {
+  const { t } = useLanguage();
   return (
     <footer className="mt-16 border-t border-primary-100 bg-white">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-8 sm:px-6">
@@ -39,7 +41,7 @@ export default function Footer() {
         </div>
 
         <p className="text-sm text-primary-400">
-          © {new Date().getFullYear()} Foodly. All rights reserved.
+          {t("footer.rights", { year: new Date().getFullYear() })}
         </p>
       </div>
     </footer>

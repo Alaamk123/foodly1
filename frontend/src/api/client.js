@@ -32,5 +32,9 @@ export const removeMealFromPlan = (weekStart, slotId) =>
   api.delete(`/mealplans/${weekStart}/meals/${slotId}`).then((r) => r.data);
 export const clearWeek = (weekStart) => api.delete(`/mealplans/${weekStart}`).then((r) => r.data);
 
+// ---------- Orders (login required) ----------
+export const createOrder = (payload) => api.post("/orders", payload).then((r) => r.data);
+export const fetchOrders = () => api.get("/orders").then((r) => r.data);
+
 // ---------- Grocery List (login required) ----------
 export const fetchGroceryList = (weekStart) => api.get(`/grocery-list/${weekStart}`).then((r) => r.data);
