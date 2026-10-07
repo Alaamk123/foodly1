@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { translations, SUPPORTED_LANGS } from "./translations";
-import recipeTranslationsAr from "./recipeTranslations.ar";
+import recipeTranslationsAr from "./recipeTranslation.ar.js";
 
 const LANG_KEY = "foodly_lang";
 const LEGACY_KEY = "foodly_checkout_lang"; // the old checkout-only toggle
