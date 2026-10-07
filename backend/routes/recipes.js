@@ -6,7 +6,7 @@ router.get("/", async (req, res) => {
   try {
     const { diet, excludeAllergens, search,maxTime } = req.query;
     const page = Math.max(Math.max(parseInt(req.query.page, 10)) || 1, 1);
-    const limit = Math.max(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
 
     const query = {};
 

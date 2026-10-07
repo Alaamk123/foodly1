@@ -692,7 +692,7 @@ const recipes = [
   },
   {
     title: "Red Lentil Soup",
-    image: img("1547592805-8fee0f9c2a1a"),
+    image: "https://www.google.com/imgres?q=red%20lentils%20soup&imgurl=https%3A%2F%2Floveandgoodstuff.com%2Fwp-content%2Fuploads%2F2019%2F02%2Fmoroccan_lentil_soup-2.jpg&imgrefurl=https%3A%2F%2Floveandgoodstuff.com%2Fmoroccan-red-lentil-soup%2F&docid=A2C3l6iMqdu0oM&tbnid=aDXyL1Nx51wvNM&vet=12ahUKEwi6yqnJvKWXAxUCR_EDHSirNjgQnPAOegUIrAEQAA..i&w=685&h=1024&hcb=2&ved=2ahUKEwi6yqnJvKWXAxUCR_EDHSirNjgQnPAOegUIrAEQAA",
     description: "A silky, warmly spiced soup that is on the table in 30 minutes.",
     prepTimeMinutes: 10, cookTimeMinutes: 25, servings: 4, calories: 280, difficulty: "Easy",
     dietTags: ["Vegan", "Vegetarian", "Gluten Free", "Dairy Free"],

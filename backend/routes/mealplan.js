@@ -52,29 +52,37 @@ router.post("/:weekStart/meals", async (req, res) => {
   try {
     const { weekStart } = req.params;
     const userId = req.userId;
-    const { dayIndex, mealType, recipeId, servings } = req.body;
+    const { mealType, recipeId, servings } = req.body;
+    const dayIndex = Number(req.body.dayIndex); // tolerate "2" as well as 2
 
-    if (dayIndex === undefined || !mealType || !recipeId) {
-      return res.status(400).json({ message: "dayIndex, mealType and recipeId are required" });
+    if (req.body.dayIndex === undefined || !Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6 || !mealType || !recipeId) {
+      return res.status(400).json({ message: "dayIndex (0-6), mealType and recipeId are required" });
     }
 
     const recipeExists = await Recipe.exists({ _id: recipeId });
     if (!recipeExists) return res.status(404).json({ message: "Recipe not found" });
 
-    let plan = await MealPlan.findOne({ userId, weekStart });
-    if (!plan) {
-      plan = new MealPlan({ userId, weekStart, meals: [] });
+    // 1) Make sure the week's plan exists. Two quick requests could both try to create it
+    //    (unique index on userId+weekStart), so a duplicate-key error here is safe to ignore.
+    try {
+      await MealPlan.updateOne(
+        { userId, weekStart },
+        { $setOnInsert: { meals: [] } },
+        { upsert: true }
+      );
+    } catch (err) {
+      if (err.code !== 11000) throw err;
     }
 
-    // Replace any existing slot for the same day + mealType (one recipe per slot)
-    plan.meals = plan.meals.filter(
-      (m) => !(m.dayIndex === dayIndex && m.mealType === mealType)
+    // 2) Remove any existing meal slot for that day+type, then add the new one.
+    await MealPlan.updateOne({ userId, weekStart }, { $pull: { meals: { dayIndex, mealType } } });
+    await MealPlan.updateOne(
+      { userId, weekStart },
+      { $push: { meals: { dayIndex, mealType, recipe: recipeId, servings: servings || undefined } } },
+      { runValidators: true }
     );
-    plan.meals.push({ dayIndex, mealType, recipe: recipeId, servings: servings || undefined });
 
-    await plan.save();
-    await plan.populate("meals.recipe");
-
+    const plan = await MealPlan.findOne({ userId, weekStart }).populate("meals.recipe");
     res.status(201).json(plan);
   } catch (err) {
     console.error(err);
