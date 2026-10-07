@@ -12,6 +12,13 @@ body {
   @apply bg-cream-50 text-primary-900 font-sans antialiased;
 }
 
+/* Arabic: Nunito/Quicksand have no Arabic letters, so use Cairo for both body and headings */
+html[lang="ar"] body,
+html[lang="ar"] .font-sans,
+html[lang="ar"] .font-display {
+  font-family: "Cairo", "Segoe UI", system-ui, sans-serif;
+}
+
 /* Custom scrollbar for a softer, more polished feel */
 ::-webkit-scrollbar {
   width: 8px;

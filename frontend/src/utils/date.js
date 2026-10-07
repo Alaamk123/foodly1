@@ -32,11 +32,11 @@ export function dateForDayIndex(weekStart, dayIndex) {
   return d;
 }
 
-export function formatWeekRangeLabel(weekStart) {
+export function formatWeekRangeLabel(weekStart, locale = "en-US") {
   const start = new Date(`${weekStart}T00:00:00`);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
 
   const opts = { month: "short", day: "numeric" };
-  return `${start.toLocaleDateString("en-US", opts)} – ${end.toLocaleDateString("en-US", opts)}`;
+  return `${start.toLocaleDateString(locale, opts)} – ${end.toLocaleDateString(locale, opts)}`;
 }

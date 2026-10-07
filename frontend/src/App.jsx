@@ -11,14 +11,16 @@ import WeeklyPlanner from "./pages/WeeklyPlanner";
 import GroceryList from "./pages/GroceryList";
 import { useAuth } from "./context/AuthContext";
 import Checkout from "./pages/Checkout";
+import { useLanguage } from "./i18n/LanguageContext";
 
 export default function App() {
   const { authLoading, user } = useAuth();
+  const { t } = useLanguage();
 
   if (authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-cream-50">
-        <LoadingSpinner label="Loading..." />
+        <LoadingSpinner label={t("common.loading")} />
       </div>
     );
   }
