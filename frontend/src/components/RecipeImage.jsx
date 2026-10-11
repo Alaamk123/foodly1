@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { UtensilsCrossed } from "lucide-react";
+import { assetUrl } from "../api/client";
 
 /**
  * <img> يعرض صورةً مؤقتة بلون أخضر ناعم إذا فشل رابط الصورة في التحميل، بحيث لا يترك الرابط المعطّل مربعًا فارغًا وغير جميل على الصفحة.
@@ -14,5 +15,5 @@ export default function RecipeImage({ src, alt, className = "" }) {
       </div>
     );
   }
-  return <img src={src} alt={alt} className={className} loading="lazy" onError={() => setFailed(true)} />;
+  return <img src={assetUrl(src)} alt={alt} className={className} loading="lazy" onError={() => setFailed(true)} />;
 }
