@@ -1,127 +1,68 @@
 const express = require("express");
-const mongoose = require("mongoose");
-const MealPlan = require("../models/MealPlan");
-const Recipe = require("../models/Recipe");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 const requireAuth = require("../middleware/auth");
 
 const router = express.Router();
 
-// Every meal-plan route needs a logged-in user (req.userId comes from the JWT)
-router.use(requireAuth);
+const signToken = (user) =>
+  jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-// GET /api/mealplans/:weekStart  -> fetch (or create empty) plan for that week
-router.get("/:weekStart", async (req, res) => {
+const publicUser = (user) => ({ id: user._id.toString(), name: user.name, email: user.email, role: user.role || "user" });
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// POST /api/auth/register
+router.post("/register", async (req, res) => {
   try {
-    const { weekStart } = req.params;
-    const userId = req.userId;
-    let plan = await MealPlan.findOne({ userId, weekStart }).populate("meals.recipe");
+    const name = String(req.body.name || "").trim();
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
 
-if (!plan) {
-  plan = { userId, weekStart, meals: [] };
-} else {
-  // Remove meal slots whose recipe was deleted
-  const validMeals = plan.meals.filter((slot) => slot.recipe);
-
-  if (validMeals.length !== plan.meals.length) {
-    plan.meals = validMeals;
-    await plan.save();
-  }
-}
-
-// Compute daily calorie totals
-const dailyTotals = Array.from({ length: 7 }, () => 0);
-
-(plan.meals || []).forEach((slot) => {
-  if (slot.recipe && typeof slot.recipe === "object") {
-    dailyTotals[slot.dayIndex] += slot.recipe.calories || 0;
-  }
-});
-
-res.json({
-  ...(plan.toObject ? plan.toObject() : plan),
-  dailyTotals,
-});
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch meal plan", error: err.message });
-  }
-});
-
-router.post("/:weekStart/meals", async (req, res) => {
-  try {
-    const { weekStart } = req.params;
-    const userId = req.userId;
-    const { mealType, recipeId, servings } = req.body;
-    const dayIndex = Number(req.body.dayIndex); // tolerate "2" as well as 2
-
-    if (req.body.dayIndex === undefined || !Number.isInteger(dayIndex) || dayIndex < 0 || dayIndex > 6 || !mealType || !recipeId) {
-      return res.status(400).json({ message: "dayIndex (0-6), mealType and recipeId are required" });
+    if (!name) return res.status(400).json({ message: "Name is required." });
+    if (!EMAIL_RE.test(email)) return res.status(400).json({ message: "Please enter a valid email." });
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
     }
 
-    const recipeExists = await Recipe.exists({ _id: recipeId });
-    if (!recipeExists) return res.status(404).json({ message: "Recipe not found" });
-
-    // 1) Make sure the week's plan exists. Two quick requests could both try to create it
-    //    (unique index on userId+weekStart), so a duplicate-key error here is safe to ignore.
-    try {
-      await MealPlan.updateOne(
-        { userId, weekStart },
-        { $setOnInsert: { meals: [] } },
-        { upsert: true }
-      );
-    } catch (err) {
-      if (err.code !== 11000) throw err;
+    if (await User.exists({ email })) {
+      return res.status(409).json({ message: "This email is already registered." });
     }
 
-    // 2) Remove any existing meal slot for that day+type, then add the new one.
-    await MealPlan.updateOne({ userId, weekStart }, { $pull: { meals: { dayIndex, mealType } } });
-    await MealPlan.updateOne(
-      { userId, weekStart },
-      { $push: { meals: { dayIndex, mealType, recipe: recipeId, servings: servings || undefined } } },
-      { runValidators: true }
-    );
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, password: hashed });
 
-    const plan = await MealPlan.findOne({ userId, weekStart }).populate("meals.recipe");
-    res.status(201).json(plan);
+    res.status(201).json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ message: "Failed to update meal plan", error: err.message });
+    res.status(500).json({ message: "Could not create account." });
   }
 });
 
-// DELETE /api/mealplans/:weekStart/meals/:slotId
-router.delete("/:weekStart/meals/:slotId", async (req, res) => {
+// POST /api/auth/login
+router.post("/login", async (req, res) => {
   try {
-    const { weekStart, slotId } = req.params;
-    const userId = req.userId;
-    const plan = await MealPlan.findOne({ userId, weekStart });
-    if (!plan) return res.status(404).json({ message: "Meal plan not found" });
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
 
-    plan.meals = plan.meals.filter((m) => String(m._id) !== slotId);
-    await plan.save();
-    await plan.populate("meals.recipe");
+    const user = await User.findOne({ email }).select("+password");
+    // Same message for "no such user" and "wrong password" (don't reveal which)
+    const ok = user && (await bcrypt.compare(password, user.password));
+    if (!ok) return res.status(401).json({ message: "Incorrect email or password." });
 
-    res.json(plan);
+    res.json({ token: signToken(user), user: publicUser(user) });
   } catch (err) {
-    res.status(400).json({ message: "Failed to remove meal", error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Could not log in." });
   }
 });
 
-// DELETE /api/mealplans/:weekStart -> clear the whole week
-router.delete("/:weekStart", async (req, res) => {
-  try {
-    const { weekStart } = req.params;
-    const userId = req.userId;
-    await MealPlan.findOneAndUpdate(
-      { userId, weekStart },
-      { meals: [] },
-      { upsert: true }
-    );
-    res.json({ message: "Week cleared" });
-  } catch (err) {
-    res.status(400).json({ message: "Failed to clear week", error: err.message });
-  }
+// GET /api/auth/me  -> used by the frontend to restore the session on page load
+router.get("/me", requireAuth, async (req, res) => {
+  const user = await User.findById(req.userId);
+  if (!user) return res.status(401).json({ message: "Account no longer exists." });
+  res.json({ user: publicUser(user) });
 });
 
 module.exports = router;

@@ -9,7 +9,7 @@ const router = express.Router();
 const signToken = (user) =>
   jwt.sign({ id: user._id.toString() }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-const publicUser = (user) => ({ id: user._id.toString(), name: user.name, email: user.email });
+const publicUser = (user) => ({ id: user._id.toString(), name: user.name, email: user.email, role: user.role || "user" });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

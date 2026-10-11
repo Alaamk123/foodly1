@@ -1,6 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const Recipe = require("../models/Recipe");
+const { PUBLIC_FILTER } = require("../models/Recipe");
+const requireAuth = require("../middleware/auth");
+const requireAdmin = require("../middleware/admin");
+
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 router.get("/", async (req, res) => {
   try {
@@ -8,7 +13,8 @@ router.get("/", async (req, res) => {
     const page = Math.max(Math.max(parseInt(req.query.page, 10)) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 50);
 
-    const query = {};
+    // Public catalog: only approved recipes (pending/rejected submissions never appear here).
+    const query = { ...PUBLIC_FILTER };
 
     if (diet) {
         const diets = diet.split(",").map((d) => d.trim()).filter((Boolean));
@@ -21,7 +27,7 @@ router.get("/", async (req, res) => {
     }
 
     if (search) {
-      query.title = { $regex: search, $options: "i" };
+      query.title = { $regex: escapeRegex(String(search)), $options: "i" };
     }
 
     let recipes = await Recipe.find(query).sort({ createdAt: -1 });
@@ -53,7 +59,9 @@ router.get("/", async (req, res) => {
 // GET /api/recipes/:id
 router.get("/:id", async (req, res) => {
   try {
-    const recipe = await Recipe.findById(req.params.id);
+    // Pending / rejected recipes are hidden here too (owners see them in /api/submissions/mine,
+    // admins in /api/admin/recipes/:id).
+    const recipe = await Recipe.findOne({ _id: req.params.id, ...PUBLIC_FILTER });
     if (!recipe) return res.status(404).json({ message: "Recipe not found" });
     res.json(recipe);
   } catch (err) {
@@ -61,8 +69,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/recipes  (utility endpoint for admins / seeding via API instead of script)
-router.post("/", async (req, res) => {
+// POST /api/recipes  (admin only: utility endpoint for seeding via API instead of the script)
+router.post("/", requireAuth, requireAdmin, async (req, res) => {
   try {
     const recipe = await Recipe.create(req.body);
     res.status(201).json(recipe);
@@ -72,7 +80,7 @@ router.post("/", async (req, res) => {
 });
 
 // PUT /api/recipes/:id
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const recipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -86,7 +94,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE /api/recipes/:id
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const recipe = await Recipe.findByIdAndDelete(req.params.id);
     if (!recipe) return res.status(404).json({ message: "Recipe not found" });
