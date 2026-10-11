@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 
-const PAYMENT_METHODS = ["cod", "visa", "mastercard"];
+// "card" is what the checkout page sends; 
+const PAYMENT_METHODS = ["cod", "card", "visa", "mastercard"];
+
+const ORDER_STATUSES = ["placed", "processing", "completed", "cancelled"];
 
 const OrderItemSchema = new mongoose.Schema(
   {
@@ -33,10 +36,20 @@ const OrderSchema = new mongoose.Schema(
       enum: ["pending_on_delivery", "demo_simulated"],
       required: true,
     },
-    status: { type: String, enum: ["placed", "cancelled"], default: "placed" },
+   status: { type: String, enum: ORDER_STATUSES, default: "placed", index: true },
   },
   { timestamps: true }
 );
 
+// Human-friendly order number derived from the id (no extra stored field needed).
+OrderSchema.virtual("orderNumber").get(function () {
+  return `FD-${this._id.toString().slice(-6).toUpperCase()}`;
+});
+
+OrderSchema.set("toJSON", { virtuals: true });
+OrderSchema.set("toObject", { virtuals: true });
+
+
 module.exports = mongoose.model("Order", OrderSchema);
 module.exports.PAYMENT_METHODS = PAYMENT_METHODS;
+module.exports.ORDER_STATUSES = ORDER_STATUSES;
