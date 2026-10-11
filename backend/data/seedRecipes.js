@@ -848,11 +848,22 @@ const recipes = [
 async function seed() {
   await connectDB();
 
-  const count = await Recipe.countDocuments();
-  if (count > 0) {
-    console.log(`[seed] Recipes collection already has ${count} documents. Dropping and reseeding...`);
-    await Recipe.deleteMany({});
-  }
+  const count = await Recipe.countDocuments(seedFilter);
+
+if (count > 0) {
+  console.log(
+    `[seed] Found ${count} built-in recipes. Replacing them (user submissions are kept)...`
+  );
+
+  const old = await Recipe.find(seedFilter).select("_id");
+
+  await Recipe.deleteMany(seedFilter);
+
+  // Remove ratings belonging to the deleted built-in recipes.
+  await require("../models/Rating").deleteMany({
+    recipe: { $in: old.map((r) => r._id) },
+  });
+}
 
   const all = recipes.map(normalizeRecipe);
   await Recipe.insertMany(all);
