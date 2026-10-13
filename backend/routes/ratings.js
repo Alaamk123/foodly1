@@ -1,101 +1,111 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const Order = require("../models/Order");
-const { PAYMENT_METHODS, ORDER_STATUSES } = require("../models/Order");
+const Rating = require("../models/Rating");
+const Recipe = require("../models/Recipe");
+const User = require("../models/User");
 const requireAuth = require("../middleware/auth");
 
-const router = express.Router();
-router.use(requireAuth);
+// mergeParams: lets this router read :recipeId from the path it is mounted on
+// (server.js mounts it at /api/recipes/:recipeId/rating)
+const router = express.Router({ mergeParams: true });
 
-// POST /api/orders  -> save an order together with its payment method.
-// NOTE: there is no real payment provider yet. Card orders are saved as
-// "demo_simulated" and the card number is never sent to or stored by the server.
-router.post("/", async (req, res) => {
+const MAX_COMMENT = 1000;
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+// Recalculate the average and count from the Rating collection (the source of truth)
+// and store them on the recipe so the recipe list/detail can show them without extra queries.
+async function refreshRecipeStats(recipeId) {
+  const [stats] = await Rating.aggregate([
+    { $match: { recipe: new mongoose.Types.ObjectId(recipeId) } },
+    { $group: { _id: "$recipe", avg: { $avg: "$value" }, count: { $sum: 1 } } },
+  ]);
+  const ratingAverage = stats ? Math.round(stats.avg * 100) / 100 : 0;
+  const ratingCount = stats ? stats.count : 0;
+  await Recipe.updateOne({ _id: recipeId }, { $set: { ratingAverage, ratingCount } });
+  return { ratingAverage, ratingCount };
+}
+
+// GET /api/recipes/:recipeId/rating/reviews  (public) -> latest written reviews of a recipe.
+// Only the reviewer's first name is exposed (no email, no id).
+router.get("/reviews", async (req, res) => {
   try {
-    const {
-      weekStart, items, subtotal, deliveryFee, serviceFee, total,
-      deliveryMethod, destination, paymentMethod, cardLast4,
-    } = req.body;
+    const { recipeId } = req.params;
+    if (!isValidId(recipeId)) return res.status(400).json({ message: "Invalid recipe id." });
 
-    if (!PAYMENT_METHODS.includes(paymentMethod)) {
-      return res.status(400).json({ message: "Invalid payment method.", code: "INVALID_PAYMENT" });
-    }
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "Order has no items.", code: "EMPTY_ORDER" });
-    }
-    if (!destination || !String(destination).trim()) {
-      return res.status(400).json({ message: "Destination is required.", code: "NO_DESTINATION" });
-    }
+    const rows = await Rating.find({ recipe: recipeId, comment: { $ne: "" } })
+      .sort({ updatedAt: -1 })
+      .limit(50)
+      .populate({ path: "user", model: User, select: "name" })
+      .lean();
 
-    // Basic sanity checks so a tampered request cannot store nonsense amounts.
-    const nums = { subtotal, deliveryFee: deliveryFee ?? 0, serviceFee: serviceFee ?? 0, total };
-    for (const [k, v] of Object.entries(nums)) {
-      if (typeof v !== "number" || !Number.isFinite(v) || v < 0) {
-        return res.status(400).json({ message: `${k} must be a non-negative number.`, code: "INVALID_AMOUNT" });
-      }
-    }
-    if (items.length > 300 || items.some((it) => !it || typeof it.price !== "number" || typeof it.quantity !== "number")) {
-      return res.status(400).json({ message: "Order items are invalid.", code: "INVALID_ITEMS" });
-    }
-    const itemsSum = items.reduce((sum, it) => sum + it.price * it.quantity, 0);
-    if (Math.abs(itemsSum - subtotal) > 0.05 || Math.abs(subtotal + nums.deliveryFee + nums.serviceFee - total) > 0.05) {
-      return res.status(400).json({ message: "Order totals do not add up.", code: "TOTAL_MISMATCH" });
-    }
-    if (String(destination).length > 300) {
-      return res.status(400).json({ message: "Destination is too long.", code: "NO_DESTINATION" });
-    }
-
-    const isCard = paymentMethod !== "cod";
-    const last4 = isCard ? String(cardLast4 || "").replace(/\D/g, "").slice(-4) : null;
-    if (isCard && last4.length !== 4) {
-      return res.status(400).json({ message: "Invalid card details.", code: "INVALID_CARD" });
-    }
-
-    const order = await Order.create({
-      userId: req.userId,
-      weekStart, items, subtotal, deliveryFee, serviceFee, total,
-      deliveryMethod, destination, paymentMethod,
-      cardLast4: last4,
-      paymentStatus: isCard ? "demo_simulated" : "pending_on_delivery",
-    });
-
-    res.status(201).json(order);
+    res.json(
+      rows.map((r) => ({
+        id: r._id,
+        value: r.value,
+        comment: r.comment,
+        author: (r.user?.name || "").split(" ")[0] || "",
+        createdAt: r.updatedAt || r.createdAt,
+      }))
+    );
   } catch (err) {
     console.error(err);
-    res.status(400).json({ message: "Failed to place order.", error: err.message });
+    res.status(500).json({ message: "Could not load reviews." });
   }
 });
 
-// GET /api/orders?page=&limit=&status=  -> ONLY the current user's orders (newest first)
+// Everything below needs a logged-in user
+router.use(requireAuth);
+
+// GET /api/recipes/:recipeId/rating  -> the logged-in user's own rating (null if none)
 router.get("/", async (req, res) => {
   try {
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
-    const query = { userId: req.userId };
-    if (req.query.status) {
-      if (!ORDER_STATUSES.includes(req.query.status)) return res.status(400).json({ message: "Invalid status filter." });
-      query.status = req.query.status;
-    }
-    const [total, data] = await Promise.all([
-      Order.countDocuments(query),
-      Order.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-    ]);
-    res.json({ data, pagination: { total, page, limit, totalPages: Math.max(Math.ceil(total / limit), 1) } });
+    const { recipeId } = req.params;
+    if (!isValidId(recipeId)) return res.status(400).json({ message: "Invalid recipe id." });
+
+    const mine = await Rating.findOne({ recipe: recipeId, user: req.userId });
+    res.json({ myRating: mine ? mine.value : null, myComment: mine ? mine.comment : "" });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch orders.", error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Could not load your rating." });
   }
 });
 
-// GET /api/orders/:id -> one order, but only if it belongs to the current user.
-// Someone else's order answers 404 (not 403) so order ids cannot be probed.
-router.get("/:id", async (req, res) => {
+// PUT /api/recipes/:recipeId/rating  { value: 1..5, comment?: string }  -> add or change the user's rating/comment
+router.put("/", async (req, res) => {
   try {
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "Order not found" });
-    const order = await Order.findOne({ _id: req.params.id, userId: req.userId });
-    if (!order) return res.status(404).json({ message: "Order not found" });
-    res.json(order);
+    const { recipeId } = req.params;
+    if (!isValidId(recipeId)) return res.status(400).json({ message: "Invalid recipe id." });
+
+    const { value } = req.body;
+    if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 5) {
+      return res.status(400).json({ message: "Rating must be a whole number from 1 to 5." });
+    }
+
+    // The comment is optional. If it is not sent at all, an existing comment is left untouched.
+    const { comment } = req.body;
+    if (comment !== undefined && (typeof comment !== "string" || comment.trim().length > MAX_COMMENT)) {
+      return res.status(400).json({ message: `Comment must be text of at most ${MAX_COMMENT} characters.` });
+    }
+
+    if (!(await Recipe.exists({ _id: recipeId }))) {
+      return res.status(404).json({ message: "Recipe not found." });
+    }
+
+    // One rating per (user, recipe): update it if it exists, otherwise create it
+    const update = { value };
+    if (comment !== undefined) update.comment = comment.trim();
+    const saved = await Rating.findOneAndUpdate(
+      { recipe: recipeId, user: req.userId },
+      { $set: update },
+      { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+
+    const stats = await refreshRecipeStats(recipeId);
+    res.json({ myRating: value, myComment: saved.comment, ...stats });
   } catch (err) {
-    res.status(500).json({ message: "Failed to fetch the order.", error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Could not save your rating." });
   }
 });
 

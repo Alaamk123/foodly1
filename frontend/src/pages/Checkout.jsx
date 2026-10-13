@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -13,13 +13,13 @@ import {
   Clock,
   PackageCheck,
   Receipt,
-  Languages,
 } from "lucide-react";
 import { fetchGroceryList, createOrder, fetchMyOrders } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { formatWeekRangeLabel } from "../utils/date";
 import { priceForItem, formatPrice } from "../utils/fakePricing";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { useLanguage } from "../i18n/LanguageContext";
 
 /* ===================== Bilingual text (EN / AR) =====================
    Self-contained to this page on purpose: switching languages here does
@@ -126,22 +126,6 @@ const STRINGS = {
   },
 };
 
-const LangContext = createContext(null);
-const useLang = () => useContext(LangContext);
-
-function LanguageToggle() {
-  const { lang, setLang } = useLang();
-  return (
-    <button
-      onClick={() => setLang(lang === "en" ? "ar" : "en")}
-      className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-primary-600 shadow-card ring-1 ring-primary-100 hover:bg-primary-50"
-    >
-      <Languages size={14} />
-      {lang === "en" ? "العربية" : "English"}
-    </button>
-  );
-}
-
 const DELIVERY_FEE = 3.99;
 const SERVICE_FEE = 1.5;
 
@@ -165,11 +149,7 @@ function formatExpiry(value) {
 export default function Checkout() {
   const { user, currentWeekStart } = useAuth();
   const userId = user.id;
-  const [lang, setLang] = useState(() => localStorage.getItem("foodly_checkout_lang") || "en");
-
-  useEffect(() => {
-    localStorage.setItem("foodly_checkout_lang", lang);
-  }, [lang]);
+  const { lang } = useLanguage(); // same language as the rest of the site (Navbar toggle)
 
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
@@ -289,13 +269,12 @@ export default function Checkout() {
   if (loading) return <LoadingSpinner label={lang === "ar" ? "عم نحمّل قائمتك..." : "Loading your list..."} />;
 
   return (
-    <LangContext.Provider value={{ lang, setLang }}>
+    <>
       <div dir={lang === "ar" ? "rtl" : "ltr"} className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 rounded-full bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">
             <Lock size={13} /> {t.demoBanner}
           </div>
-          <LanguageToggle />
         </div>
 
         {step !== "done" && (
@@ -365,7 +344,7 @@ export default function Checkout() {
           </>
         )}
       </div>
-    </LangContext.Provider>
+    </>
   );
 }
 

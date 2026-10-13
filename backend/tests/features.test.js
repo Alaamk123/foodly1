@@ -137,6 +137,29 @@ test("ratings: add, average, count, edit (one rating per user)", async () => {
   assert.equal(list.body.data[0].ratingCount, 2);
 });
 
+test("ratings: comments are saved, listed publicly, kept when omitted, and validated", async () => {
+  const url = `/api/recipes/${seedRecipe._id}/rating`;
+
+  const bad = await call("PUT", url, { token: alice.token, body: { value: 4, comment: 123 } });
+  assert.equal(bad.status, 400);
+  const tooLong = await call("PUT", url, { token: alice.token, body: { value: 4, comment: "x".repeat(1001) } });
+  assert.equal(tooLong.status, 400);
+
+  const ok = await call("PUT", url, { token: alice.token, body: { value: 4, comment: "  Delicious!  " } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.body.myComment, "Delicious!");
+
+  // changing only the stars keeps the old comment
+  const keep = await call("PUT", url, { token: alice.token, body: { value: 5 } });
+  assert.equal(keep.body.myComment, "Delicious!");
+
+  // the reviews list is public (no token) and does not leak emails
+  const list = await call("GET", `${url}/reviews`);
+  assert.equal(list.status, 200);
+  assert.ok(list.body.some((r) => r.comment === "Delicious!"));
+  assert.ok(!JSON.stringify(list.body).includes("@"));
+});
+
 test("ratings: the database refuses a duplicate (recipe,user) pair", async () => {
   await assert.rejects(Rating.create({ recipe: seedRecipe._id, user: alice.id, value: 1 }), (e) => e.code === 11000);
 });

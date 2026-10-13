@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const connectDB = require("../config/db");
 const Recipe = require("../models/Recipe");
 
+// Built-in recipes are the ones NOT submitted by a user (user submissions are never touched).
+const seedFilter = { submittedBy: null };
+
 const img = (id) => `https://images.unsplash.com/photo-${id}?w=800`;
 
 const normalizeCategory = (category) => {
@@ -388,7 +391,7 @@ const recipes = [
   },
   {
     title: "Vegetarian Lentil Bolognese",
-    image: "https://images.unsplash.com/photo-1621996346565-e3dbc353d2e5?w=800",
+    image: "c:\Users\alaam\Downloads\beef-broccoli-stir-fry.jpg.jpg",
     description: "A hearty, protein-rich twist on classic bolognese using red lentils in place of meat.",
     prepTimeMinutes: 10,
     cookTimeMinutes: 30,
@@ -873,7 +876,12 @@ if (count > 0) {
   process.exit(0);
 }
 
-seed().catch((err) => {
-  console.error("[seed] Failed:", err);
-  process.exit(1);
-});
+module.exports = { recipes, normalizeRecipe, seedFilter };
+
+// Run the (destructive for built-in recipes) re-seed only for `npm run seed`, not when imported.
+if (require.main === module) {
+  seed().catch((err) => {
+    console.error("[seed] Failed:", err);
+    process.exit(1);
+  });
+}

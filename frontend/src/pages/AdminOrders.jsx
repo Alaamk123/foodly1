@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { ShieldCheck, ChevronLeft, ChevronRight } from "lucide-react";
-import { adminFetchOrders, adminUpdateOrderStatus, errorMessage } from "../api/client";
+import { adminFetchOrders, adminUpdateOrderStatus } from "../api/client";
+import { useLanguage } from "../i18n/LanguageContext";
 import { formatPrice } from "../utils/fakePricing";
 import AdminTabs from "../components/AdminTabs";
-import StatusBadge, { ORDER_STATUS_LABELS } from "../components/StatusBadge";
+import StatusBadge, { ORDER_STATUSES } from "../components/StatusBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 // Which statuses an order may move to (the backend enforces the same: completed/cancelled are final).
@@ -14,9 +15,12 @@ const NEXT = {
   cancelled: [],
 };
 
-const formatDate = (iso) => new Date(iso).toLocaleString("ar-u-nu-latn", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const formatDate = (iso, locale) => new Date(iso).toLocaleString(locale, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default function AdminOrders() {
+  const { t, apiError, locale, isRTL } = useLanguage();
+  const Prev = isRTL ? ChevronRight : ChevronLeft;
+  const Next = isRTL ? ChevronLeft : ChevronRight;
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [list, setList] = useState({ data: [], pagination: { totalPages: 1 } });
@@ -30,7 +34,7 @@ export default function AdminOrders() {
     setError("");
     adminFetchOrders({ status: status || undefined, page, limit: 20 })
       .then(setList)
-      .catch((err) => setError(errorMessage(err, "تعذّر تحميل الطلبات.")))
+      .catch((err) => setError(apiError(err, "adminOrders.loadError")))
       .finally(() => setLoading(false));
   }, [status, page]);
 
@@ -44,22 +48,22 @@ export default function AdminOrders() {
       const updated = await adminUpdateOrderStatus(order._id, next);
       setList((l) => ({ ...l, data: l.data.map((o) => (o._id === order._id ? { ...o, status: updated.status } : o)) }));
     } catch (err) {
-      setRowError((p) => ({ ...p, [order._id]: errorMessage(err, "تعذّر تحديث الحالة.") }));
+      setRowError((p) => ({ ...p, [order._id]: apiError(err, "adminOrders.updateError") }));
     } finally {
       setBusyId(null);
     }
   };
 
   return (
-    <div dir="rtl" className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <h1 className="section-title mb-4 flex items-center gap-2">
-        <ShieldCheck size={24} /> لوحة الإدارة
+        <ShieldCheck size={24} /> {t("adminRecipes.panel")}
       </h1>
       <AdminTabs />
 
       <div className="mb-4 flex items-center gap-2">
         <label htmlFor="status-filter" className="text-sm font-semibold text-primary-700">
-          الحالة:
+          {t("adminOrders.statusLabel")}
         </label>
         <select
           id="status-filter"
@@ -70,23 +74,23 @@ export default function AdminOrders() {
           }}
           className="rounded-xl border border-primary-100 bg-white px-3 py-2 text-sm"
         >
-          <option value="">الكل</option>
-          {Object.entries(ORDER_STATUS_LABELS).map(([k, label]) => (
+          <option value="">{t("paging.all")}</option>
+          {ORDER_STATUSES.map((k) => (
             <option key={k} value={k}>
-              {label}
+              {t(`status.order.${k}`)}
             </option>
           ))}
         </select>
       </div>
 
       {loading ? (
-        <LoadingSpinner label="جارٍ التحميل..." />
+        <LoadingSpinner label={t("common.loading")} />
       ) : error ? (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">
           {error}
         </p>
       ) : list.data.length === 0 ? (
-        <p className="card p-8 text-center text-sm text-primary-500">لا توجد طلبات.</p>
+        <p className="card p-8 text-center text-sm text-primary-500">{t("adminOrders.empty")}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {list.data.map((o) => {
@@ -97,7 +101,7 @@ export default function AdminOrders() {
                   <div>
                     <p className="font-display font-bold text-primary-900">{o.orderNumber}</p>
                     <p className="text-xs text-primary-500">
-                      {o.customer ? `${o.customer.name} (${o.customer.email})` : "مستخدم غير معروف"} · {formatDate(o.createdAt)}
+                      {o.customer ? `${o.customer.name} (${o.customer.email})` : t("adminOrders.unknownUser")} · {formatDate(o.createdAt, locale)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -107,14 +111,14 @@ export default function AdminOrders() {
                 </div>
 
                 <p className="mt-2 text-sm text-primary-600">
-                  {o.items.length} عنصر · {o.deliveryMethod === "delivery" ? "توصيل" : "استلام"}: {o.destination}
+                  {t("adminOrders.itemsCount", { n: o.items.length })} · {o.deliveryMethod === "delivery" ? t("adminOrders.delivery") : t("adminOrders.pickup")}: {o.destination}
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {options.length > 0 ? (
                     <>
                       <label htmlFor={`st-${o._id}`} className="text-sm font-semibold text-primary-700">
-                        تغيير الحالة:
+                        {t("adminOrders.changeStatus")}
                       </label>
                       <select
                         id={`st-${o._id}`}
@@ -123,16 +127,16 @@ export default function AdminOrders() {
                         onChange={(e) => changeStatus(o, e.target.value)}
                         className="rounded-xl border border-primary-100 bg-white px-3 py-2 text-sm"
                       >
-                        <option value="">اختر...</option>
+                        <option value="">{t("adminOrders.choose")}</option>
                         {options.map((s) => (
                           <option key={s} value={s}>
-                            {ORDER_STATUS_LABELS[s]}
+                            {t(`status.order.${s}`)}
                           </option>
                         ))}
                       </select>
                     </>
                   ) : (
-                    <span className="text-xs text-primary-400">لا يمكن تغيير حالة هذا الطلب.</span>
+                    <span className="text-xs text-primary-400">{t("adminOrders.locked")}</span>
                   )}
                 </div>
                 {rowError[o._id] && (
@@ -148,14 +152,14 @@ export default function AdminOrders() {
 
       {list.pagination.totalPages > 1 && (
         <div className="mt-6 flex items-center justify-center gap-3">
-          <button className="btn-secondary !px-4 !py-2" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="الصفحة السابقة">
-            <ChevronRight size={18} />
+          <button className="btn-secondary !px-4 !py-2" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t("paging.prev")}>
+            <Prev size={18} />
           </button>
           <span className="text-sm font-semibold text-primary-700">
             {page} / {list.pagination.totalPages}
           </span>
-          <button className="btn-secondary !px-4 !py-2" disabled={page >= list.pagination.totalPages} onClick={() => setPage((p) => p + 1)} aria-label="الصفحة التالية">
-            <ChevronLeft size={18} />
+          <button className="btn-secondary !px-4 !py-2" disabled={page >= list.pagination.totalPages} onClick={() => setPage((p) => p + 1)} aria-label={t("paging.next")}>
+            <Next size={18} />
           </button>
         </div>
       )}

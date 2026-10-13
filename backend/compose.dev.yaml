@@ -1,0 +1,35 @@
+services:
+  mongo:
+    ports:
+      - "127.0.0.1:27017:27017" # for MongoDB Compass; only your own computer can connect
+
+  backend:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./:/app # edit the code on your computer, nodemon restarts the server
+      - /app/node_modules # keep the container's own node_modules
+      - uploads-data:/app/uploads
+    cap_drop: !reset []
+    security_opt: !reset []
+
+  frontend:
+    build:
+      target: dev
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+      VITE_USE_POLLING: "true"
+    ports: !override
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    cap_drop: !reset []
+    security_opt: !reset []
+    healthcheck:
+      disable: true

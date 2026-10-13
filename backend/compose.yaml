@@ -1,0 +1,72 @@
+name: foodly
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-foodly}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env (copy .env.example to .env)}
+    volumes:
+      - mongo-data:/data/db # database files survive stop / rebuild / restart
+    # No "ports:" on purpose: the database is reachable only from the other containers.
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  backend:
+    build:
+      context: . # this folder (backend/)
+      target: production
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "5000"
+      MONGO_URI: mongodb://${MONGO_USER:-foodly}:${MONGO_PASSWORD}@mongo:27017/${MONGO_DB:-foodly}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (copy .env.example to .env)}
+      SEED_ON_START: ${SEED_ON_START:-true}
+    volumes:
+      - uploads-data:/app/uploads # uploaded recipe images survive stop / rebuild / restart
+    # No "ports:" - the API is reached through the frontend container (nginx) at /api.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: ../frontend
+      target: production
+      args:
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  mongo-data:
+  uploads-data:

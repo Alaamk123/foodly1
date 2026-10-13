@@ -37,15 +37,14 @@ export const fetchGroceryList = (weekStart) => api.get(`/grocery-list/${weekStar
 
 // ---------- Helpers ----------
 // Uploaded images are served by the backend (e.g. /uploads/recipes/xxx.png), not by Vite.
-export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 export const assetUrl = (path) => (typeof path === "string" && path.startsWith("/uploads/") ? `${API_ORIGIN}${path}` : path);
-// The backend always answers errors as { message, errors? } — show that message when there is one.
-export const errorMessage = (err, fallback = "حدث خطأ غير متوقع، حاول مرة أخرى.") =>
-  err?.response?.data?.message || (err?.request && !err?.response ? "تعذّر الاتصال بالخادم. تأكد أن الـ backend يعمل." : fallback);
 
 // ---------- Ratings (login required) ----------
 export const fetchMyRating = (recipeId) => api.get(`/recipes/${recipeId}/rating`).then((r) => r.data);
-export const rateRecipe = (recipeId, value) => api.put(`/recipes/${recipeId}/rating`, { value }).then((r) => r.data);
+export const rateRecipe = (recipeId, value, comment) =>
+  api.put(`/recipes/${recipeId}/rating`, comment === undefined ? { value } : { value, comment }).then((r) => r.data);
+export const fetchReviews = (recipeId) => api.get(`/recipes/${recipeId}/rating/reviews`).then((r) => r.data);
 
 // ---------- Orders (login required) ----------
 export const createOrder = (payload) => api.post("/orders", payload).then((r) => r.data);

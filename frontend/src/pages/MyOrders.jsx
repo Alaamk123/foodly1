@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, ChevronDown, ChevronUp, Truck, Store, CreditCard, Banknote, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchMyOrders, errorMessage } from "../api/client";
+import { fetchMyOrders } from "../api/client";
+import { useLanguage } from "../i18n/LanguageContext";
 import { formatPrice } from "../utils/fakePricing";
 import StatusBadge from "../components/StatusBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-const formatDate = (iso) =>
-  new Date(iso).toLocaleString("ar-u-nu-latn", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const formatDate = (iso, locale) =>
+  new Date(iso).toLocaleString(locale, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
 export default function MyOrders() {
+  const { t, apiError, isRTL } = useLanguage();
+  const Prev = isRTL ? ChevronRight : ChevronLeft;
+  const Next = isRTL ? ChevronLeft : ChevronRight;
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ data: [], pagination: { totalPages: 1, total: 0 } });
   const [loading, setLoading] = useState(true);
@@ -21,31 +25,31 @@ export default function MyOrders() {
     setError("");
     fetchMyOrders({ page, limit: 10 })
       .then(setData)
-      .catch((err) => setError(errorMessage(err, "تعذّر تحميل طلباتك.")))
+      .catch((err) => setError(apiError(err, "myOrders.loadError")))
       .finally(() => setLoading(false));
   }, [page]);
 
   const { totalPages, total } = data.pagination;
 
   return (
-    <div dir="rtl" className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <h1 className="section-title flex items-center gap-2">
-        <Package size={24} /> طلباتي
+        <Package size={24} /> {t("myOrders.title")}
       </h1>
-      <p className="mb-6 mt-1 text-sm text-primary-500">{total ? `لديك ${total} طلب.` : "جميع طلباتك السابقة وحالتها تظهر هنا."}</p>
+      <p className="mb-6 mt-1 text-sm text-primary-500">{total ? (total === 1 ? t("myOrders.countOne") : t("myOrders.count", { n: total })) : t("myOrders.subtitle")}</p>
 
       {loading ? (
-        <LoadingSpinner label="جارٍ تحميل طلباتك..." />
+        <LoadingSpinner label={t("myOrders.loading")} />
       ) : error ? (
         <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm font-semibold text-red-700">
           {error}
         </p>
       ) : data.data.length === 0 ? (
         <div className="card p-8 text-center">
-          <p className="font-display font-bold text-primary-800">لا توجد طلبات حتى الآن.</p>
-          <p className="mt-1 text-sm text-primary-500">خطّط لوجباتك الأسبوعية ثم أتمّ طلب قائمة التسوق.</p>
+          <p className="font-display font-bold text-primary-800">{t("myOrders.emptyTitle")}</p>
+          <p className="mt-1 text-sm text-primary-500">{t("myOrders.emptyText")}</p>
           <Link to="/planner" className="btn-primary mt-4">
-            ابدأ التخطيط
+            {t("myOrders.startPlanning")}
           </Link>
         </div>
       ) : (
@@ -58,14 +62,14 @@ export default function MyOrders() {
 
           {totalPages > 1 && (
             <div className="mt-6 flex items-center justify-center gap-3">
-              <button className="btn-secondary !px-4 !py-2" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label="الصفحة السابقة">
-                <ChevronRight size={18} />
+              <button className="btn-secondary !px-4 !py-2" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} aria-label={t("paging.prev")}>
+                <Prev size={18} />
               </button>
               <span className="text-sm font-semibold text-primary-700">
                 {page} / {totalPages}
               </span>
-              <button className="btn-secondary !px-4 !py-2" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label="الصفحة التالية">
-                <ChevronLeft size={18} />
+              <button className="btn-secondary !px-4 !py-2" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} aria-label={t("paging.next")}>
+                <Next size={18} />
               </button>
             </div>
           )}
@@ -76,13 +80,14 @@ export default function MyOrders() {
 }
 
 function OrderCard({ order, open, onToggle }) {
+  const { t, locale } = useLanguage();
   const isCard = order.paymentMethod !== "cod";
   return (
     <li className="card overflow-hidden">
-      <button onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-right">
+      <button onClick={onToggle} aria-expanded={open} className="flex w-full flex-wrap items-center justify-between gap-3 p-4 text-start">
         <div>
-          <p className="font-display font-bold text-primary-900">طلب {order.orderNumber}</p>
-          <p className="text-xs text-primary-400">{formatDate(order.createdAt)}</p>
+          <p className="font-display font-bold text-primary-900">{t("myOrders.order", { n: order.orderNumber })}</p>
+          <p className="text-xs text-primary-400">{formatDate(order.createdAt, locale)}</p>
         </div>
         <div className="flex items-center gap-3">
           <StatusBadge kind="order" status={order.status} />
@@ -94,13 +99,13 @@ function OrderCard({ order, open, onToggle }) {
       {open && (
         <div className="border-t border-primary-100 p-4 text-sm">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] text-right">
+            <table className="w-full min-w-[420px] text-start">
               <thead>
                 <tr className="text-xs text-primary-400">
-                  <th className="pb-2 font-semibold">المنتج</th>
-                  <th className="pb-2 font-semibold">الكمية</th>
-                  <th className="pb-2 font-semibold">سعر الوحدة</th>
-                  <th className="pb-2 font-semibold">المجموع</th>
+                  <th className="pb-2 font-semibold">{t("myOrders.product")}</th>
+                  <th className="pb-2 font-semibold">{t("myOrders.qty")}</th>
+                  <th className="pb-2 font-semibold">{t("myOrders.unitPrice")}</th>
+                  <th className="pb-2 font-semibold">{t("myOrders.lineTotal")}</th>
                 </tr>
               </thead>
               <tbody className="text-primary-700">
@@ -119,20 +124,20 @@ function OrderCard({ order, open, onToggle }) {
           </div>
 
           <dl className="mt-4 flex flex-col gap-1.5 rounded-xl bg-primary-50 p-3 text-primary-700">
-            <Row label="المجموع الفرعي" value={formatPrice(order.subtotal)} />
-            <Row label="رسوم التوصيل" value={formatPrice(order.deliveryFee)} />
-            <Row label="رسوم الخدمة" value={formatPrice(order.serviceFee)} />
-            <Row label="الإجمالي" value={formatPrice(order.total)} bold />
+            <Row label={t("myOrders.subtotal")} value={formatPrice(order.subtotal)} />
+            <Row label={t("myOrders.deliveryFee")} value={formatPrice(order.deliveryFee)} />
+            <Row label={t("myOrders.serviceFee")} value={formatPrice(order.serviceFee)} />
+            <Row label={t("myOrders.total")} value={formatPrice(order.total)} bold />
           </dl>
 
           <ul className="mt-4 flex flex-col gap-2 text-primary-600">
             <li className="flex items-center gap-2">
               {order.deliveryMethod === "delivery" ? <Truck size={16} /> : <Store size={16} />}
-              {order.deliveryMethod === "delivery" ? "توصيل إلى:" : "استلام من:"} <span className="font-semibold">{order.destination}</span>
+              {order.deliveryMethod === "delivery" ? t("myOrders.deliveryTo") : t("myOrders.pickupFrom")} <span className="font-semibold">{order.destination}</span>
             </li>
             <li className="flex items-center gap-2">
               {isCard ? <CreditCard size={16} /> : <Banknote size={16} />}
-              {isCard ? `بطاقة تنتهي بـ ${order.cardLast4}` : "الدفع عند الاستلام"}
+              {isCard ? t("myOrders.cardEnding", { n: order.cardLast4 }) : t("myOrders.cod")}
             </li>
           </ul>
         </div>

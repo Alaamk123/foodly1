@@ -3,7 +3,8 @@ import { UtensilsCrossed } from "lucide-react";
 import { assetUrl } from "../api/client";
 
 /**
- * <img> يعرض صورةً مؤقتة بلون أخضر ناعم إذا فشل رابط الصورة في التحميل، بحيث لا يترك الرابط المعطّل مربعًا فارغًا وغير جميل على الصفحة.
+ * <img> that shows a soft green placeholder when the image fails to load,
+ * so a broken link never leaves an ugly empty box on the page.
  */
 export default function RecipeImage({ src, alt, className = "" }) {
   const [failed, setFailed] = useState(false);

@@ -19,7 +19,7 @@ export function priceForItem(name, category) {
     return PRICES[key];
   }
 
-  // سعر تجريبي افتراضي إذا الصنف غير موجود
+  // Default demo price when the item is not in the list
   return 3.99;
 }
 

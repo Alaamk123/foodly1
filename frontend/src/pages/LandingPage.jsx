@@ -62,7 +62,7 @@ export default function LandingPage() {
       {/* ---------------- Stats ---------------- */}
       <section className="bg-primary-600 px-4 py-10 sm:px-6">
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 sm:grid-cols-4">
-          <StatCounter value={32} suffix="+" label={t("landing.stats.recipes")} />
+          <StatCounter value={26} suffix="+" label={t("landing.stats.recipes")} />
           <StatCounter value={7} label={t("landing.stats.diets")} />
           <StatCounter value={8} label={t("landing.stats.allergens")} />
           <StatCounter value={100} suffix="%" label={t("landing.stats.free")} />

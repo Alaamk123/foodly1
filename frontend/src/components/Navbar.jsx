@@ -1,19 +1,21 @@
 import { NavLink, Link } from "react-router-dom";
 import { ChefHat, CalendarDays, ShoppingBasket, BookOpen, LogOut, User, Package, BookMarked, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../i18n/LanguageContext";
+import LanguageToggle from "./LanguageToggle";
 
 const links = [
-  { to: "/recipes", label: "Recipes", icon: BookOpen },
-  { to: "/planner", label: "Meal Planner", icon: CalendarDays },
-  { to: "/grocery-list", label: "Grocery List", icon: ShoppingBasket },
+  { to: "/recipes", labelKey: "nav.recipes", icon: BookOpen },
+  { to: "/planner", labelKey: "nav.planner", icon: CalendarDays },
+  { to: "/grocery-list", labelKey: "nav.groceryList", icon: ShoppingBasket },
 ];
 
 // Shown only to logged-in users / admins
 const userLinks = [
-  { to: "/orders", label: "طلباتي", icon: Package },
-  { to: "/my-recipes", label: "وصفاتي", icon: BookMarked },
+  { to: "/orders", labelKey: "nav.orders", icon: Package },
+  { to: "/my-recipes", labelKey: "nav.myRecipes", icon: BookMarked },
 ];
-const adminLink = { to: "/admin", label: "الإدارة", icon: ShieldCheck };
+const adminLink = { to: "/admin", labelKey: "nav.admin", icon: ShieldCheck };
 
 const linkClass = ({ isActive }) =>
   `flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition-colors sm:px-4 ${
@@ -22,6 +24,7 @@ const linkClass = ({ isActive }) =>
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   return (
     <header className="sticky top-0 z-30 border-b border-primary-100 bg-cream-50/90 backdrop-blur">
@@ -34,20 +37,20 @@ export default function Navbar() {
         </Link>
 
         <nav className="flex items-center gap-1 rounded-full bg-white p-1 shadow-card ring-1 ring-black/5">
-          {links.map(({ to, label, icon: Icon }) => (
+          {links.map(({ to, labelKey, icon: Icon }) => (
             <NavLink key={to} to={to} className={linkClass}>
               <Icon size={16} />
-              <span className="hidden md:inline">{label}</span>
+              <span className="hidden md:inline">{t(labelKey)}</span>
             </NavLink>
           ))}
 
           {/* Right next to "Grocery List" */}
           {user ? (
             <>
-              {[...userLinks, ...(user.role === "admin" ? [adminLink] : [])].map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} className={linkClass} title={label} aria-label={label}>
+              {[...userLinks, ...(user.role === "admin" ? [adminLink] : [])].map(({ to, labelKey, icon: Icon }) => (
+                <NavLink key={to} to={to} className={linkClass} title={t(labelKey)} aria-label={t(labelKey)}>
                   <Icon size={16} />
-                  <span className="hidden lg:inline">{label}</span>
+                  <span className="hidden lg:inline">{t(labelKey)}</span>
                 </NavLink>
               ))}
               <span className="hidden items-center gap-1.5 px-3 text-sm font-semibold text-primary-700 sm:flex">
@@ -58,22 +61,24 @@ export default function Navbar() {
                 className="flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-accent-600 hover:bg-accent-400/10"
               >
                 <LogOut size={16} />
-                <span className="hidden md:inline">Logout</span>
+                <span className="hidden md:inline">{t("nav.logout")}</span>
               </button>
             </>
           ) : (
             <>
               <NavLink to="/login" className={linkClass}>
-                Log in
+                {t("nav.login")}
               </NavLink>
               <NavLink
                 to="/signup"
                 className="rounded-full bg-accent-500 px-3 py-2 text-sm font-semibold text-white hover:bg-accent-600 sm:px-4"
               >
-                Sign up
+                {t("nav.signup")}
               </NavLink>
             </>
           )}
+
+          <LanguageToggle />
         </nav>
       </div>
     </header>

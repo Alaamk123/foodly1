@@ -3,18 +3,17 @@ import { translations, SUPPORTED_LANGS } from "./translations";
 import recipeTranslationsAr from "./recipeTranslation.ar.js";
 
 const LANG_KEY = "foodly_lang";
-const LEGACY_KEY = "foodly_checkout_lang"; // the old checkout-only toggle
 
 const LanguageContext = createContext(null);
 
 function getInitialLang() {
   try {
-    const saved = localStorage.getItem(LANG_KEY) || localStorage.getItem(LEGACY_KEY);
+    const saved = localStorage.getItem(LANG_KEY);
     if (SUPPORTED_LANGS.includes(saved)) return saved;
   } catch {
     /* localStorage unavailable */
   }
-  return "en";
+  return "en"; // the site opens in English by default; the Navbar toggle switches to Arabic
 }
 
 const lookup = (obj, path) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
@@ -65,14 +64,29 @@ export function LanguageProvider({ children }) {
     [lang]
   );
 
-  /** Backend error message -> translated text (falls back to the original message) */
+  /** Translate one backend message (exact text first, then the few messages that contain numbers/statuses). */
+  const translateMessage = useCallback(
+    (msg) => {
+      if (lang !== "ar" || typeof msg !== "string") return msg;
+      const exact = translations.ar.errors?.[msg];
+      if (exact) return exact;
+      let m = msg.match(/^You already have (\d+) recipes waiting for review\.$/);
+      if (m) return `لديك بالفعل ${m[1]} وصفات بانتظار المراجعة.`;
+      m = msg.match(/^This order is already (\w+) and can no longer be changed\.$/);
+      if (m) return `هذا الطلب ${translations.ar.status.order[m[1]] ?? m[1]} ولا يمكن تغييره بعد الآن.`;
+      return msg;
+    },
+    [lang]
+  );
+
+  /** Backend error -> translated text. Uses the server's message when there is one, otherwise the fallback key. */
   const apiError = useCallback(
     (err, fallbackKey = "common.serverError") => {
       const msg = err?.response?.data?.message;
       if (!msg) return t(fallbackKey);
-      return translations[lang].errors?.[msg] ?? msg;
+      return translateMessage(msg);
     },
-    [lang, t]
+    [t, translateMessage]
   );
 
   /** Returns the recipe with title/description/tips/steps in the current language (if available) */
@@ -93,8 +107,8 @@ export function LanguageProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ lang, setLang, toggleLang, isRTL, dir, locale, t, term, ingredient, apiError, localizeRecipe }),
-    [lang, toggleLang, isRTL, dir, locale, t, term, ingredient, apiError, localizeRecipe]
+    () => ({ lang, setLang, toggleLang, isRTL, dir, locale, t, term, ingredient, apiError, translateMessage, localizeRecipe }),
+    [lang, toggleLang, isRTL, dir, locale, t, term, ingredient, apiError, translateMessage, localizeRecipe]
   );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
