@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const MealPlan = require("../models/MealPlan");
 const Recipe = require("../models/Recipe");
+const { PUBLIC_FILTER } = require("../models/Recipe");
 const requireAuth = require("../middleware/auth");
 
 const router = express.Router();
@@ -59,7 +60,8 @@ router.post("/:weekStart/meals", async (req, res) => {
       return res.status(400).json({ message: "dayIndex (0-6), mealType and recipeId are required" });
     }
 
-    const recipeExists = await Recipe.exists({ _id: recipeId });
+    // Only public recipes can be planned; pending/rejected submissions look like they do not exist.
+    const recipeExists = await Recipe.exists({ _id: recipeId, ...PUBLIC_FILTER });
     if (!recipeExists) return res.status(404).json({ message: "Recipe not found" });
 
     // 1) Make sure the week's plan exists. Two quick requests could both try to create it

@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Rating = require("../models/Rating");
 const Recipe = require("../models/Recipe");
+const { PUBLIC_FILTER } = require("../models/Recipe");
 const User = require("../models/User");
 const requireAuth = require("../middleware/auth");
 
@@ -12,6 +13,11 @@ const router = express.Router({ mergeParams: true });
 const MAX_COMMENT = 1000;
 
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+// Only public recipes (approved, or legacy ones without a status) can be reached through the
+// rating routes. Pending/rejected submissions behave as if they did not exist (404), exactly
+// like GET /api/recipes/:id. Returns the recipe (with its author) or null.
+const findPublicRecipe = (id) => Recipe.findOne({ _id: id, ...PUBLIC_FILTER }).select("_id submittedBy");
 
 // Recalculate the average and count from the Rating collection (the source of truth)
 // and store them on the recipe so the recipe list/detail can show them without extra queries.
@@ -32,6 +38,7 @@ router.get("/reviews", async (req, res) => {
   try {
     const { recipeId } = req.params;
     if (!isValidId(recipeId)) return res.status(400).json({ message: "Invalid recipe id." });
+    if (!(await findPublicRecipe(recipeId))) return res.status(404).json({ message: "Recipe not found." });
 
     const rows = await Rating.find({ recipe: recipeId, comment: { $ne: "" } })
       .sort({ updatedAt: -1 })
@@ -62,6 +69,7 @@ router.get("/", async (req, res) => {
   try {
     const { recipeId } = req.params;
     if (!isValidId(recipeId)) return res.status(400).json({ message: "Invalid recipe id." });
+    if (!(await findPublicRecipe(recipeId))) return res.status(404).json({ message: "Recipe not found." });
 
     const mine = await Rating.findOne({ recipe: recipeId, user: req.userId });
     res.json({ myRating: mine ? mine.value : null, myComment: mine ? mine.comment : "" });
@@ -88,8 +96,14 @@ router.put("/", async (req, res) => {
       return res.status(400).json({ message: `Comment must be text of at most ${MAX_COMMENT} characters.` });
     }
 
-    if (!(await Recipe.exists({ _id: recipeId }))) {
+    const recipe = await findPublicRecipe(recipeId);
+    if (!recipe) {
       return res.status(404).json({ message: "Recipe not found." });
+    }
+
+    // Authors may not rate their own recipe (legacy/built-in recipes have no author: submittedBy is null).
+    if (recipe.submittedBy && String(recipe.submittedBy) === String(req.userId)) {
+      return res.status(403).json({ message: "You cannot rate your own recipe." });
     }
 
     // One rating per (user, recipe): update it if it exists, otherwise create it
